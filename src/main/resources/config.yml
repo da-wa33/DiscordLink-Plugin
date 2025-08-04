@@ -1,0 +1,8 @@
+# ---------------------------------
+# DiscordLinkPlugin 設定ファイル
+# ---------------------------------
+
+# Discord Developer Portal (https://discord.com/developers/applications)
+# で取得したBotのトークンを、このシングルクォーテーションの間に貼り付けてください。
+# このトークンはパスワードと同じです。絶対に他人に見せないでください。
+bot-token: 'YourTokenHere'
