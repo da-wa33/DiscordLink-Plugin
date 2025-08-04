@@ -5,9 +5,14 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.Bukkit;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -26,6 +31,10 @@ public class DiscordLinkPlugin extends JavaPlugin {
 
         // デフォルトのconfig.ymlが存在しない場合、jar内のファイルをコピーして生成する
         saveDefaultConfig();
+
+        // データの読み込み処理を追加
+        loadData();
+        Bukkit.getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
 
         // config.ymlからトークンを読み込む
         String botToken = getConfig().getString("bot-token");
@@ -55,7 +64,7 @@ public class DiscordLinkPlugin extends JavaPlugin {
             jda.awaitReady();
             getLogger().info("Discord Botが正常にログインしました。");
 
-        } catch (Exception e) { // ▼▼▼ ここを修正しました ▼▼▼
+        } catch (Exception e) {
             getLogger().severe("Discord Botのログイン中に何らかのエラーが発生しました。");
             getLogger().severe("トークンが正しいか、ネットワーク接続に問題がないか確認してください。");
             e.printStackTrace(); // 詳細なエラーをコンソールに出力
@@ -65,6 +74,9 @@ public class DiscordLinkPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // データの保存処理を追加
+        saveData();
+
         // プラグインが無効になったときの処理
         if (jda != null) {
             jda.shutdownNow(); // Botの接続を即座に切断
@@ -104,5 +116,58 @@ public class DiscordLinkPlugin extends JavaPlugin {
 
     public Map<UUID, String> getLinkedPlayers() {
         return linkedPlayers;
+    }
+
+    // データ保存用メソッド
+    public void saveData() {
+        // データ保存用のファイルを作成 (plugins/DiscordLinkPlugin/data.yml)
+        File dataFile = new File(getDataFolder(), "data.yml");
+        FileConfiguration dataConfig = YamlConfiguration.loadConfiguration(dataFile);
+
+        // HashMapの中身をYAML形式に変換
+        // UUIDはStringに変換して保存する必要がある
+        // 現在のlinkedPlayersをクリアしてから書き込む
+        dataConfig.set("players", null); // 古いデータをクリア
+        for (Map.Entry<UUID, String> entry : linkedPlayers.entrySet()) {
+            dataConfig.set("players." + entry.getKey().toString(), entry.getValue());
+        }
+
+        try {
+            // ファイルに保存
+            dataConfig.save(dataFile);
+            getLogger().info("連携データをdata.ymlに保存しました。");
+        } catch (IOException e) {
+            getLogger().severe("データの保存中にエラーが発生しました。");
+            e.printStackTrace();
+        }
+    }
+
+    // データ読み込み用メソッド
+    public void loadData() {
+        File dataFile = new File(getDataFolder(), "data.yml");
+        // data.ymlが存在しない場合は、何もしないで終了
+        if (!dataFile.exists()) {
+            return;
+        }
+
+        FileConfiguration dataConfig = YamlConfiguration.loadConfiguration(dataFile);
+        // "players"セクションが存在するか確認
+        if (!dataConfig.isConfigurationSection("players")) {
+            return;
+        }
+
+        // YAMLのすべてのキー（UUIDの文字列）を取得
+        for (String uuidString : dataConfig.getConfigurationSection("players").getKeys(false)) {
+            try {
+                UUID playerUuid = UUID.fromString(uuidString);
+                String discordId = dataConfig.getString("players." + uuidString);
+
+                // 読み込んだデータをHashMapに戻す
+                linkedPlayers.put(playerUuid, discordId);
+            } catch (IllegalArgumentException e) {
+                getLogger().warning(uuidString + " は不正なUUID形式のため、読み込めませんでした。");
+            }
+        }
+        getLogger().info(linkedPlayers.size() + "件の連携データをdata.ymlから読み込みました。");
     }
 }
