@@ -1,0 +1,7 @@
+name: DiscordLinkPlugin
+version: 1.0
+main: me.example.DiscordLinkPlugin
+api-version: 1.21
+commands:
+  discord-link:
+    description: Discordとのリンクコードを発行します
