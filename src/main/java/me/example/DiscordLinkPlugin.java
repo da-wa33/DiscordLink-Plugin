@@ -74,14 +74,26 @@ public class DiscordLinkPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // データの保存処理を追加
+        // データの保存処理を先に行う
         saveData();
 
         // プラグインが無効になったときの処理
         if (jda != null) {
-            jda.shutdownNow(); // Botの接続を即座に切断
-            getLogger().info("Discord Botがシャットダウンしました。");
+            getLogger().info("Discord Botのシャットダウンを開始します…");
+
+            // JDAのシャットダウンを命令し、「完了するまでここで待つ」
+            try {
+                // shutdownNow()ではなく、より安全なshutdown()を使い、
+                // awaitShutdown()で完全に終了するまでこの場で待機する。
+                jda.shutdown();
+                jda.awaitShutdown(); // これが重要！
+                getLogger().info("Discord Botが正常にシャットダウンしました。");
+            } catch (InterruptedException e) {
+                getLogger().warning("Botのシャットダウンが中断されました。");
+                e.printStackTrace();
+            }
         }
+
         getLogger().info("DiscordLinkPluginが無効になりました。");
     }
 
